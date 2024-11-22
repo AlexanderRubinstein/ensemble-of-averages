@@ -160,6 +160,7 @@ def accuracy(network, loader, weights, device):
             x = x.to(device)
             y = y.to(device)
             p = network.predict(x)
+
             if weights is None:
                 batch_weights = torch.ones(len(x))
             else:

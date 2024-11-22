@@ -80,8 +80,13 @@ if __name__ == "__main__":
     else:
         hparams = hparams_registry.random_hparams(args.algorithm, args.dataset,
             misc.seed_hash(args.hparams_seed, args.trial_seed))
-    if args.hparams:
-        hparams.update(json.loads(args.hparams))
+    args_hparams = args.hparams
+    if args_hparams:
+        if isinstance(args_hparams, str):
+            args_hparams = json.loads(args.hparams)
+        else:
+            assert isinstance(args_hparams, dict)
+        hparams.update(args_hparams)
 
     print('HParams:')
     for k, v in sorted(hparams.items()):
@@ -183,6 +188,7 @@ if __name__ == "__main__":
         algorithm.load_state_dict(algorithm_dict)
 
     algorithm.to(device)
+    algorithm.network.to(device) # TODO(Alex | 22.11.2024): Check why not called by nn.Module recursion
     algorithm.device = device
 
     train_minibatches_iterator = zip(*train_loaders)
@@ -206,7 +212,6 @@ if __name__ == "__main__":
             "model_dict": algorithm.state_dict()
         }
         torch.save(save_dict, os.path.join(args.output_dir, filename))
-
 
     last_results_keys = None
     best_acc = -np.float('inf')
@@ -238,8 +243,12 @@ if __name__ == "__main__":
 
             evals = zip(eval_loader_names, eval_loaders, eval_weights)
             for name, loader, weights in evals:
-                acc = misc.accuracy(algorithm, loader, weights, device)
-                results[name+'_acc'] = acc
+
+                if args.algorithm == 'HDR':
+                    results[name+'_acc'] = 0
+                else:
+                    acc = misc.accuracy(algorithm, loader, weights, device)
+                    results[name+'_acc'] = acc
 
             ##========
             agg_val_acc, nagg_val_acc = 0, 0

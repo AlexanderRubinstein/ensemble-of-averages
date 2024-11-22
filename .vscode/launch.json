@@ -6,6 +6,28 @@
     "configurations": [
         // python -m domainbed.scripts.train --algorithm ERM --data_dir ./cur_data --dataset PACS --holdout_fraction 0.2 --hparams \'{"arch": "resnet50"}\' --hparams_seed 0 --output_dir erm-resnet50/pacs/47bae44cd695b93462a429734550a767 --seed 94828300 --task domain_generalization --test_envs 0 --trial_seed 0
         // --holdout_fraction 0.2 --hparams \'{"arch": "resnet50"}\' --hparams_seed 0 --output_dir erm-resnet50/pacs/47bae44cd695b93462a429734550a767 --seed 94828300 --task domain_generalization --test_envs 0 --trial_seed 0
+        // python -m domainbed.EoA --data_dir path/to/data --dataset PACS --output_dir erm-sma_resnet50/pacs --hparams '{"num_workers": 1, "batch_size": 128, "arch": "resnet50"}'
+        {
+            "name": "Python EoA.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./domainbed/EoA.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_dir",
+                "./cur_data",
+                "--dataset",
+                // "PACS",
+                "DomainNet",
+                "--output_dir",
+                // "erm-resnet50/domain_net/",
+                "hdr-resnet50/domain_net/",
+                "--hparams",
+                "{\"num_workers\": 8, \"batch_size\": 64, \"arch\": \"resnet50\", \"SMA\": \"False\"}"
+
+            ],
+        },
         {
             "name": "Python download.py",
             "type": "debugpy",
@@ -30,7 +52,12 @@
             "justMyCode": true,
             "args": [
                 "--algorithm",
-                "ERM",
+                // "ERM",
+                "HDR",
+                // "--n_models",
+                // "5",
+                // "random_select",
+                // "2",
                 "--data_dir",
                 "./cur_data",
                 "--dataset",
@@ -39,9 +66,12 @@
                 "--checkpoint_freq",
                 "6000",
                 "--output_dir",
-                "erm-resnet50/pacs/seed_0_test_env_0",
+                // "erm-resnet50/domain_net/seed_0_test_env_0",
+                "hdr-resnet50/domain_net/seed_0_test_env_0",
                 "--seed",
                 "94828300",
+                "--steps",
+                "10",
                 "--task",
                 "domain_generalization",
                 "--trial_seed",
@@ -64,7 +94,7 @@
                 // "1",
                 // "--single_test_envs",
                 "--hparams",
-                "{\"arch\": \"resnet50\", \"num_workers\": 8, \"eval_batch_size\": 64}",
+                "{\"arch\": \"resnet50\", \"num_workers\": 6, \"eval_batch_size\": 64, \"n_models\": 5, \"random_select\": 2, \"manual_lambda\": 1e-3}",
                 // "{\"arch\": \"resnet50\"}
                 // "--skip_confirmation"
             ],

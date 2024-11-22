@@ -9,19 +9,24 @@ from torch.autograd import Variable
 import copy
 import numpy as np
 from collections import defaultdict, OrderedDict
-try:
-    from backpack import backpack, extend
-    from backpack.extensions import BatchGrad
-except:
-    backpack = None
+# try:
+#     from backpack import backpack, extend
+#     from backpack.extensions import BatchGrad
+# except:
+#     backpack = None
 
 from domainbed import networks
 from domainbed.lib.misc import (
     random_pairs_of_minibatches, ParamDict, MovingAverage, l2_between_dicts
 )
+from domainbed.hdr import (
+    RedneckEnsemble,
+    DivDisLossWrapper
+)
 
 
 ALGORITHMS = [
+    'HDR',
     'ERM',
     'Fish',
     'IRM',
@@ -105,6 +110,90 @@ class ERM(Algorithm):
         all_x = torch.cat([x for x,y in minibatches]).to(self.device)
         all_y = torch.cat([y for x,y in minibatches]).to(self.device)
         loss = F.cross_entropy(self.predict(all_x), all_y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+
+class HDR(Algorithm):
+    """
+
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super().__init__(input_shape, num_classes, num_domains,
+                                  hparams)
+        n_models = self.hparams["n_models"]
+        models_list = []
+        for _ in range(n_models):
+            featurizer = networks.Featurizer(input_shape, self.hparams)
+            classifier = networks.Classifier(
+                featurizer.n_outputs,
+                num_classes,
+                self.hparams['nonlinear_classifier']
+            )
+            model = nn.Sequential(featurizer, classifier)
+            models_list.append(model)
+        # self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        # self.classifier = networks.Classifier(
+        #     self.featurizer.n_outputs,
+        #     num_classes,
+        #     self.hparams['nonlinear_classifier'])
+
+        # self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.network = RedneckEnsemble(
+            # n_models,
+            # base_model_builder,
+            models_list,
+            weights=None,
+            single_model_per_epoch=False,
+            identical=False,
+            feature_extractor=None,
+            product_of_experts=False,
+            random_select=self.hparams["random_select"],
+            keep_inactive_on_cpu=False,
+            softmax_ensemble=False,
+            split_last_linear_layer=False,
+            freeze_feature_extractor=True
+        )
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+        task_loss = torch.nn.CrossEntropyLoss(reduction='none')
+        self.criterion = DivDisLossWrapper(
+            # self,
+            task_loss=task_loss,
+            weight=0.5,
+            mode="mi",
+            reduction="mean",
+            mapper=None,
+            loss_type="a2d",
+            use_always_labeled=False,
+            modifier=None,
+            gamma=2.0,
+            disagree_after_epoch=0,
+            manual_lambda=self.hparams['manual_lambda'],
+            disagree_below_threshold=None,
+            reg_mode=None,
+            reg_weight=None,
+            convex_sum=False
+        )
+
+    def update(self, minibatches, unlabeled=None):
+
+        all_x = torch.cat([x for x,y in minibatches]).to(self.device)
+        all_y = torch.cat([y for x,y in minibatches]).to(self.device)
+        # loss = F.cross_entropy(self.predict(all_x), all_y)
+        outputs = self.predict(all_x)
+        loss, loss_info, gradients_info = self.criterion(outputs, all_y)
 
         self.optimizer.zero_grad()
         loss.backward()

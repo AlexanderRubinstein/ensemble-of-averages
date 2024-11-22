@@ -1,10 +1,18 @@
 # Copyright (c) Salesforce and its affiliates. All Rights Reserved
 import json
 import numpy as np
+import sys
+import os
+import tqdm
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(((__file__)))))
 from domainbed import datasets
 from domainbed import algorithms
 from domainbed.lib.fast_data_loader import FastDataLoader
 from domainbed import networks
+from domainbed import hparams_registry
+sys.path.pop(0)
+
 import torch
 import torch.nn as nn
 import os
@@ -22,20 +30,20 @@ class Algorithm(torch.nn.Module):
 			hparams['nonlinear_classifier'])
 
 		self.network = nn.Sequential(self.featurizer, self.classifier)
-		
+
 		self.featurizer_mo = networks.Featurizer(input_shape, hparams)
 		self.classifier_mo = networks.Classifier(
 			self.featurizer.n_outputs,
 			num_classes,
 			hparams['nonlinear_classifier'])
-		
+
 		self.network = self.network.cuda()
 		self.network = torch.nn.parallel.DataParallel(self.network).cuda()
 
 		self.network_sma = nn.Sequential(self.featurizer_mo, self.classifier_mo)
 		self.network_sma = self.network_sma.cuda()
 		self.network_sma = torch.nn.parallel.DataParallel(self.network_sma).cuda()
-		
+
 	def predict(self, x):
 		if self.hparams['SMA']:
 			return self.network_sma(x)
@@ -43,28 +51,41 @@ class Algorithm(torch.nn.Module):
 			return self.network(x)
 
 def accuracy(models, loader):
+
+	is_hdr = False
+	# In HDR case all models are contained in one algorithm
+	if len(models) == 1:
+		algorithm = models[0]
+		network = algorithm.network
+		if hasattr(network, "submodels"):
+			is_hdr = True
+			models = network.submodels
+
 	correct = 0
 	total = 0
 	weights_offset = 0
 
-	
 	with torch.no_grad():
-		for data in loader:
+		for data in tqdm.tqdm(loader):
 			x1,y = data[0], data[-1]
 			x = x1.cuda()
 			y = y.cuda()
-	
+
 			p = None
 			for model in models:
+				model.to(x.device)
 				model.eval()
-				p_i = model.predict(x).detach()
+				if is_hdr:
+					p_i = model(x).detach()
+				else:
+					p_i = model.predict(x).detach()
 				if p is None:
 					p = p_i
 				else:
 					p += p_i
-		   
+
 			batch_weights = torch.ones(len(x))
-		   
+
 			batch_weights = batch_weights.cuda()
 			if p.size(1) == 1:
 				correct += (p.gt(0).eq(y).float() * batch_weights.view(-1, 1)).sum().item()
@@ -109,7 +130,7 @@ def get_valid_model_selection_paths(path, nenv=4):
 
 def get_ensemble_test_acc(exp_path, nenv, dataset_name, data_dir, hparams, force=False, var=False, file_path=None):
 
-	
+
 	test_acc = {}
 
 	for env in range(nenv):
@@ -126,10 +147,27 @@ def get_ensemble_test_acc(exp_path, nenv, dataset_name, data_dir, hparams, force
 		Algorithm_all = []
 		for model_path in valid_model_id[env]:
 
-			Algorithm_ = Algorithm(dataset.input_shape, hparams, dataset.num_classes)
+
 			algorithm_dict = torch.load(model_path)
-			
-			D = rename_dict(algorithm_dict['model_dict'])
+
+			algo_args = algorithm_dict["args"]
+			algorithm_name = algo_args["algorithm"]
+			if algorithm_name == "HDR":
+				train_hparams = hparams_registry.default_hparams(algorithm_name, dataset_name)
+				algo_hparams = algo_args["hparams"]
+				if isinstance(algo_hparams, str):
+					algo_hparams = json.loads(algo_hparams)
+				train_hparams.update(algo_hparams)
+				Algorithm_ = algorithms.HDR(
+					dataset.input_shape, dataset.num_classes,
+        			len(dataset) - len(algo_args["test_envs"]),
+					hparams=train_hparams
+				)
+				D = algorithm_dict['model_dict']
+
+			else:
+				Algorithm_ = Algorithm(dataset.input_shape, hparams, dataset.num_classes)
+				D = rename_dict(algorithm_dict['model_dict'])
 			Algorithm_.load_state_dict(D, strict=False)
 			Algorithm_all.append(Algorithm_)
 
@@ -154,9 +192,14 @@ elif dataset_name=='DomainNet':
 	nenv = 6
 
 data_dir= args.data_dir
-hparams = {'data_augmentation': False, "nonlinear_classifier": False, "resnet_dropout": 0, "arch": args.arch, "batch_size": 64, "num_workers":1, "SMA": True}
+hparams = {'data_augmentation': False, "nonlinear_classifier": False, "resnet_dropout": 0, "arch": args.arch, "batch_size": 64, "num_workers":1}
+args_hparams = json.loads(args.hparams)
+if args_hparams['SMA'] in ["True", "true"]:
+	args_hparams['SMA'] = True
+else:
+	args_hparams['SMA'] = False
 if args.hparams:
-	hparams.update(json.loads(args.hparams))
+	hparams.update(args_hparams)
 
 path = args.output_dir
 
