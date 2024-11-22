@@ -102,8 +102,8 @@ class ERM(Algorithm):
         )
 
     def update(self, minibatches, unlabeled=None):
-        all_x = torch.cat([x for x,y in minibatches])
-        all_y = torch.cat([y for x,y in minibatches])
+        all_x = torch.cat([x for x,y in minibatches]).to(self.device)
+        all_y = torch.cat([y for x,y in minibatches]).to(self.device)
         loss = F.cross_entropy(self.predict(all_x), all_y)
 
         self.optimizer.zero_grad()
@@ -172,7 +172,7 @@ class ERM_SMA(Algorithm, MovingAvg):
 
 class Fish(Algorithm):
     """
-    Implementation of Fish, as seen in Gradient Matching for Domain 
+    Implementation of Fish, as seen in Gradient Matching for Domain
     Generalization, Shi et al. 2021.
     """
 
@@ -1015,7 +1015,7 @@ class ANDMask(ERM):
         param_gradients = [[] for _ in self.network.parameters()]
         for i, (x, y) in enumerate(minibatches):
             logits = self.network(x)
-            
+
             env_loss = F.cross_entropy(logits, y)
             mean_loss += env_loss.item() / len(minibatches)
 
@@ -1062,13 +1062,13 @@ class IGA(ERM):
             env_loss = F.cross_entropy(logits, y)
             total_loss += env_loss
 
-            env_grad = autograd.grad(env_loss, self.network.parameters(), 
+            env_grad = autograd.grad(env_loss, self.network.parameters(),
                                         create_graph=True)
 
             grads.append(env_grad)
-            
+
         mean_loss = total_loss / len(minibatches)
-        mean_grad = autograd.grad(mean_loss, self.network.parameters(), 
+        mean_grad = autograd.grad(mean_loss, self.network.parameters(),
                                         retain_graph=True)
 
         # compute trace penalty
@@ -1084,8 +1084,8 @@ class IGA(ERM):
         self.optimizer.step()
 
         return {'loss': mean_loss.item(), 'penalty': penalty_value.item()}
-    
-    
+
+
 class SelfReg(ERM):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(SelfReg, self).__init__(input_shape, num_classes, num_domains,
@@ -1094,7 +1094,7 @@ class SelfReg(ERM):
         self.MSEloss = nn.MSELoss()
         input_feat_size = self.featurizer.n_outputs
         hidden_size = input_feat_size if input_feat_size==2048 else input_feat_size*2
-        
+
         self.cdpl = nn.Sequential(
                             nn.Linear(input_feat_size, hidden_size),
                             nn.BatchNorm1d(hidden_size),
@@ -1105,18 +1105,18 @@ class SelfReg(ERM):
                             nn.Linear(hidden_size, input_feat_size),
                             nn.BatchNorm1d(input_feat_size)
         )
-        
+
     def update(self, minibatches, unlabeled=None):
-        
+
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for _, y in minibatches])
 
         lam = np.random.beta(0.5, 0.5)
-        
+
         batch_size = all_y.size()[0]
-        
+
         # cluster and order features into same-class group
-        with torch.no_grad():   
+        with torch.no_grad():
             sorted_y, indices = torch.sort(all_y)
             sorted_x = torch.zeros_like(all_x)
             for idx, order in enumerate(indices):
@@ -1132,10 +1132,10 @@ class SelfReg(ERM):
 
             all_x = sorted_x
             all_y = sorted_y
-        
+
         feat = self.featurizer(all_x)
         proj = self.cdpl(feat)
-        
+
         output = self.classifier(feat)
 
         # shuffle
@@ -1153,8 +1153,8 @@ class SelfReg(ERM):
                 output_3[idx+ex] = output[shuffle_indices2[idx]]
                 feat_3[idx+ex] = proj[shuffle_indices2[idx]]
             ex = end
-        
-        # mixup 
+
+        # mixup
         output_3 = lam*output_2 + (1-lam)*output_3
         feat_3 = lam*feat_2 + (1-lam)*feat_3
 
@@ -1163,11 +1163,11 @@ class SelfReg(ERM):
         L_hdl_logit = self.MSEloss(output, output_3)
         L_ind_feat = 0.3 * self.MSEloss(feat, feat_2)
         L_hdl_feat = 0.3 * self.MSEloss(feat, feat_3)
-        
+
         cl_loss = F.cross_entropy(output, all_y)
         C_scale = min(cl_loss.item(), 1.)
         loss = cl_loss + C_scale*(lam*(L_ind_logit + L_ind_feat)+(1-lam)*(L_hdl_logit + L_hdl_feat))
-     
+
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -1449,7 +1449,7 @@ class TRM(Algorithm):
                 for classifier in self.clist:
                     classifier.weight.data = copy.deepcopy(self.classifier.weight.data)
             self.alpha /= self.alpha.sum(1, keepdim=True)
-            
+
             self.featurizer.train()
             all_x = torch.cat([x for x, y in minibatches])
             all_y = torch.cat([y for x, y in minibatches])
@@ -1575,7 +1575,7 @@ class IB_ERM(ERM):
         ib_penalty /= len(minibatches)
 
         # Compile loss
-        loss = nll 
+        loss = nll
         loss += ib_penalty_weight * ib_penalty
 
         if self.update_count == self.hparams['ib_penalty_anneal_iters']:
@@ -1591,7 +1591,7 @@ class IB_ERM(ERM):
         self.optimizer.step()
 
         self.update_count += 1
-        return {'loss': loss.item(), 
+        return {'loss': loss.item(),
                 'nll': nll.item(),
                 'IB_penalty': ib_penalty.item()}
 
@@ -1649,7 +1649,7 @@ class IB_IRM(ERM):
         ib_penalty /= len(minibatches)
 
         # Compile loss
-        loss = nll 
+        loss = nll
         loss += irm_penalty_weight * irm_penalty
         loss += ib_penalty_weight * ib_penalty
 
@@ -1666,9 +1666,9 @@ class IB_IRM(ERM):
         self.optimizer.step()
 
         self.update_count += 1
-        return {'loss': loss.item(), 
+        return {'loss': loss.item(),
                 'nll': nll.item(),
-                'IRM_penalty': irm_penalty.item(), 
+                'IRM_penalty': irm_penalty.item(),
                 'IB_penalty': ib_penalty.item()}
 
 

@@ -1,0 +1,173 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        // python -m domainbed.scripts.train --algorithm ERM --data_dir ./cur_data --dataset PACS --holdout_fraction 0.2 --hparams \'{"arch": "resnet50"}\' --hparams_seed 0 --output_dir erm-resnet50/pacs/47bae44cd695b93462a429734550a767 --seed 94828300 --task domain_generalization --test_envs 0 --trial_seed 0
+        // --holdout_fraction 0.2 --hparams \'{"arch": "resnet50"}\' --hparams_seed 0 --output_dir erm-resnet50/pacs/47bae44cd695b93462a429734550a767 --seed 94828300 --task domain_generalization --test_envs 0 --trial_seed 0
+        {
+            "name": "Python download.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./domainbed/scripts/download.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_dir",
+                "./cur_data",
+                "--dataset",
+                // "PACS",
+                "DomainNet"
+            ],
+        },
+        {
+            "name": "Python train.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./domainbed/scripts/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--algorithm",
+                "ERM",
+                "--data_dir",
+                "./cur_data",
+                "--dataset",
+                // "PACS",
+                "DomainNet",
+                "--checkpoint_freq",
+                "6000",
+                "--output_dir",
+                "erm-resnet50/pacs/seed_0_test_env_0",
+                "--seed",
+                "94828300",
+                "--task",
+                "domain_generalization",
+                "--trial_seed",
+                "0",
+                "--test_envs",
+                "0",
+
+                // "--command_launcher",
+                // // "multi_gpu",
+                // "local",
+                "--hparams_seed",
+                "0",
+                "--holdout_fraction",
+                "0.2",
+                // "--n_hparams",
+                // // "3",
+                // "1",
+                // "--n_trials",
+                // // "2",
+                // "1",
+                // "--single_test_envs",
+                "--hparams",
+                "{\"arch\": \"resnet50\", \"num_workers\": 8, \"eval_batch_size\": 64}",
+                // "{\"arch\": \"resnet50\"}
+                // "--skip_confirmation"
+            ],
+            // "env": {
+            //     "PROJECT_ROOT_PROVIDED_FOR_STUNED": "/home/oh/arubinstein17/github/densification"
+            // }
+        },
+        {
+            "name": "Python sweep.py launch",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./domainbed/scripts/sweep.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "launch",
+                "--data_dir",
+                "./cur_data",
+                "--output_dir",
+                "erm-resnet50/pacs",
+                "--command_launcher",
+                // "multi_gpu",
+                "local",
+                "--algorithms",
+                "ERM",
+                "--datasets",
+                "PACS",
+                "--n_hparams",
+                // "3",
+                "1",
+                "--n_trials",
+                // "2",
+                "1",
+                "--single_test_envs",
+                "--hparams",
+                "{\"arch\": \"resnet50\"}",
+                "--skip_confirmation"
+            ],
+            // "env": {
+            //     "PROJECT_ROOT_PROVIDED_FOR_STUNED": "/home/oh/arubinstein17/github/densification"
+            // }
+        },
+        {
+            "name": "Python sweep.py delete incomplete",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./domainbed/scripts/sweep.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "delete_incomplete",
+                "--data_dir",
+                "./cur_data",
+                "--output_dir",
+                "erm-resnet50/pacs",
+                "--command_launcher",
+                // "multi_gpu",
+                "local",
+                "--algorithms",
+                "ERM",
+                "--datasets",
+                "PACS",
+                "--n_hparams",
+                // "3",
+                "1",
+                "--n_trials",
+                // "2",
+                "1",
+                "--single_test_envs",
+                "--hparams",
+                "{\"arch\": \"resnet50\"}",
+                "--skip_confirmation"
+            ],
+            // "env": {
+            //     "PROJECT_ROOT_PROVIDED_FOR_STUNED": "/home/oh/arubinstein17/github/densification"
+            // }
+        },
+
+        // {
+        //     "name": "Python runner.py",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "/home/oh/arubinstein17/github/STAI-tuned/src/stuned/run_cmd/main.py",
+        //     "console": "integratedTerminal",
+        //     "justMyCode": true,
+        //     "args": [
+        //         "--config_path",
+        //         // "./configs/eval/eval.yaml"
+        //         // "/home/oh/arubinstein17/github/densification/configs/mask_generation/autogenerated/[1]_6117c876deba129adbe3_autogenerated_config.yaml"
+        //         "/home/oh/arubinstein17/github/densification/experiment_configs/mask_proposal/autogenerated/[1]_8d182a557855c06e4c3d_autogenerated_config.yaml"
+        //     ],
+        //     "env": {
+        //         "PROJECT_ROOT_PROVIDED_FOR_STUNED": "/home/oh/arubinstein17/github/densification"
+        //     }
+        // },
+        // {
+        //     "name": "Python Debugger: Current File",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "${file}",
+        //     "console": "integratedTerminal"
+        // }
+
+        // python -m domainbed.scripts.sweep launch --data_dir path/to/data --output_dir erm-sma_resnet50/pacs --command_launcher multi_gpu --algorithms ERM_SMA --datasets PACS --n_hparams 3 --n_trials 2 --single_test_envs --hparams '{"arch": "resnet50"}'
+    ]
+}

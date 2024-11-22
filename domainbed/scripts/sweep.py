@@ -14,15 +14,20 @@ import random
 import shutil
 import time
 import uuid
+import sys
 
 import numpy as np
 import torch
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname((__file__)))))
 
 from domainbed import datasets
 from domainbed import hparams_registry
 from domainbed import algorithms
 from domainbed.lib import misc
 from domainbed import command_launchers
+
+sys.path.pop(0)
 
 import tqdm
 import shlex

@@ -181,6 +181,7 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
         super().__init__()
         environments = [f.name for f in os.scandir(root) if f.is_dir()]
         environments = sorted(environments)
+        self.N_WORKERS = hparams.get('num_workers', 1)
 
         transform = transforms.Compose([
             transforms.Resize((224,224)),

@@ -8,6 +8,7 @@ import random
 import sys
 import time
 import uuid
+import tqdm
 
 import numpy as np
 import PIL
@@ -15,11 +16,13 @@ import torch
 import torchvision
 import torch.utils.data
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname((__file__)))))
 from domainbed import datasets
 from domainbed import hparams_registry
 from domainbed import algorithms
 from domainbed.lib import misc
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
+sys.path.pop(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Domain generalization')
@@ -161,7 +164,7 @@ if __name__ == "__main__":
 
     eval_loaders = [FastDataLoader(
         dataset=env,
-        batch_size=64,
+        batch_size=hparams['eval_batch_size'],
         num_workers=dataset.N_WORKERS)
         for env, _ in (in_splits + out_splits + uda_splits)]
     eval_weights = [None for _, weights in (in_splits + out_splits + uda_splits)]
@@ -180,6 +183,7 @@ if __name__ == "__main__":
         algorithm.load_state_dict(algorithm_dict)
 
     algorithm.to(device)
+    algorithm.device = device
 
     train_minibatches_iterator = zip(*train_loaders)
     uda_minibatches_iterator = zip(*uda_loaders)
@@ -206,9 +210,11 @@ if __name__ == "__main__":
 
     last_results_keys = None
     best_acc = -np.float('inf')
-    for step in range(start_step, n_steps):
+    for step in tqdm.tqdm(range(start_step, n_steps)):
         step_start_time = time.time()
-        minibatches_device = [(x.to(device), y.to(device))
+        # minibatches_device = [(x.to(device), y.to(device))
+        #     for x,y in next(train_minibatches_iterator)]
+        minibatches_device = [(x, y)
             for x,y in next(train_minibatches_iterator)]
         if args.task == "domain_adaptation":
             uda_device = [x.to(device)
@@ -221,7 +227,7 @@ if __name__ == "__main__":
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
 
-        if (step % checkpoint_freq == 0) or (step == n_steps - 1):
+        if (step > 0) and (step % checkpoint_freq == 0) or (step == n_steps - 1):
             results = {
                 'step': step,
                 'epoch': step / steps_per_epoch,
