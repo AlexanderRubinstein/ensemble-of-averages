@@ -24,7 +24,129 @@ from domainbed.lib import misc
 from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 sys.path.pop(0)
 
+
+EXPONENTIAL_SYMBOLS = ('e', 'E')
+FLOATING_POINT = '.'
+
+
+def str_is_number(input_str):
+
+    if len(input_str) == 0:
+        return False
+
+    exponential = False
+    has_floating_point = False
+    for i in range(len(input_str)):
+        if input_str[i].isdigit():
+            continue
+        if input_str[i] == '-':
+            if i == 0:
+                continue
+            elif exponential and input_str[i - 1] in EXPONENTIAL_SYMBOLS:
+                continue
+        if (
+                input_str[i] == '+'
+            and
+                exponential
+            and
+                input_str[i - 1] in EXPONENTIAL_SYMBOLS
+        ):
+            continue
+        if input_str[i] in EXPONENTIAL_SYMBOLS and not exponential:
+            exponential = True
+            continue
+        if input_str[i] == FLOATING_POINT and not has_floating_point:
+            has_floating_point = True
+            continue
+        return False
+
+    if exponential and not input_str[-1].isdigit():
+        return False
+    return True
+
+
+def collect_dict_in_args(args):
+
+    def add_quotes_around_keys(dict_as_str):
+
+        def add_quotes(s):
+            return '\"' + s + '\"'
+
+        if len(dict_as_str) <= 2:
+            return dict_as_str
+        # assert dict_as_str[-2] != ","
+        # dict_as_str = dict_as_str.replace('{', '{\"')
+        # dict_as_str = dict_as_str.replace(':', '\":')
+        # dict_as_str = dict_as_str.replace(',', ',\"')
+        res = "{"
+        for k_v in dict_as_str.split(','):
+            if k_v.startswith('{'):
+                k_v = k_v[1:]
+            if k_v.endswith('}'):
+                k_v = k_v[:-1]
+            k, v = k_v.split(':')
+            res += add_quotes(k) + ':'
+
+            if str_is_number(str(v)):
+                res += v
+            else:
+                res += add_quotes(v)
+            res += ','
+
+            # if k_v.startswith(':'):
+            #     dict_as_str = dict_as_str.replace(k_v, '\"' + k_v)
+        # dict_as_str = dict_as_str.replace('}', '\"}')
+        res = res[:-1] # remove last comma
+        res += "}"
+        return res
+
+    new_args = []
+    i = 0
+    inside_dict = False
+    dict_as_one_str = ""
+    while i < len(args):
+
+        if args[i].startswith('{'):
+            inside_dict = True
+
+        if inside_dict:
+            cur_arg = args[i]
+            # if cur_arg.startswith('{'):
+            #     dict_as_one_str += '{'
+            #     cur_arg = cur_arg[1:]
+            # if cur_arg.endswith('}'):
+            #     cur_arg = cur_arg[:-1]
+            # k_v = args[i].split(':')
+            # k_v = f"""\"{k_v[0]}\":\"{k_v[1]}\""""
+            k_v = cur_arg
+            dict_as_one_str += k_v
+        else:
+            new_args.append(args[i])
+
+        if args[i].endswith('}'):
+            inside_dict = False
+            new_args.append(add_quotes_around_keys(dict_as_one_str))
+        i += 1
+
+            ###
+        # if args[i].startswith('--'):
+        #     if args[i+1].startswith('{'):
+        #         new_args.append(args[i])
+        #         new_args.append(json.loads(args[i+1]))
+        #         i += 2
+        #     else:
+        #         new_args.append(args[i])
+        #         new_args.append(args[i+1])
+        #         i += 2
+        # else:
+        #     new_args.append(args[i])
+        #     i += 1
+    return new_args
+
 if __name__ == "__main__":
+    # print(sys.argv)
+    sys.argv = collect_dict_in_args(sys.argv)
+    # print(sys.argv)
     parser = argparse.ArgumentParser(description='Domain generalization')
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--dataset', type=str, default="RotatedMNIST")
@@ -33,6 +155,8 @@ if __name__ == "__main__":
         choices=["domain_generalization", "domain_adaptation"])
     parser.add_argument('--hparams', type=str,
         help='JSON-serialized hparams dict')
+    # parser.add_argument('--hparams', type=json.loads,
+    #     help='JSON-serialized hparams dict')
     parser.add_argument('--hparams_seed', type=int, default=0,
         help='Seed for random hparams (0 means "default hparams")')
     parser.add_argument('--trial_seed', type=int, default=0,
