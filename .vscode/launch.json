@@ -22,7 +22,18 @@
                 "DomainNet",
                 "--output_dir",
                 // "erm-resnet50/domain_net/",
-                "hdr-resnet50/domain_net/",
+                // "hdr-resnet50/domain_net/",
+                // "/mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_64", // 10k erm
+                // "/mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_65", // 20k erm
+                // "/mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_66", // 40k erm
+                // ERM below
+                "5.00E-05    5000    /mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_63 5.00E-05    10000    /mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_64 5.00E-05    20000    /mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_65 5.00E-05    40000    /mnt/lustre/work/oh/arubinstein17/erm-resnet50/domain_net/seed_0_test_env_0_66",
+                "--parsing_keys",
+                "delta:kwargs/hparams/lr,delta:kwargs/steps,delta:kwargs/output_dir",
+                "--paths_key",
+                "delta:kwargs/output_dir",
+                "--result_savepath",
+                "./results_2311",
                 "--hparams",
                 "{\"num_workers\": 8, \"batch_size\": 64, \"arch\": \"resnet50\", \"SMA\": \"False\"}"
 
