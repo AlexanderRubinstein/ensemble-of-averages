@@ -20,6 +20,10 @@ import argparse
 import time
 
 
+# CHECKPOINT_NAME = "best_model.pkl"
+CHECKPOINT_NAME = "model.pkl"
+
+
 def append_dict(total_dict, current_dict, allow_new_keys=False):
     """
     Append leaves of possibly nested <current_dict>
@@ -194,17 +198,28 @@ def get_test_env_id(path):
 
 def get_valid_model_selection_paths(path, nenv=4):
     valid_model_id = [[] for _ in range(nenv)]
-    listdir = os.listdir(path)
-    if 'best_model.pkl' in listdir:
+
+    huge_string = path.replace('\t', ' ').replace('\n', ' ')
+    split = huge_string.split()
+    if len(split) > 1:
+        listdir = split
+        path = ''
+    else:
+
+        listdir = os.listdir(path)
+
+    if CHECKPOINT_NAME in listdir:
         test_env_id = get_test_env_id(path)
-        valid_model_id[test_env_id].append(f'{path}/best_model.pkl')
+        valid_model_id[test_env_id].append(f'{path}/{CHECKPOINT_NAME}')
     else:
 
         for env in range(nenv):
             cnt=0
             for i, subdir in enumerate(listdir):
-                if '.' not in subdir:
-                    test_env_id =get_test_env_id(os.path.join(path, subdir))
+                # if '.' not in subdir:
+                cur_path = os.path.join(path, subdir)
+                if os.path.isdir(cur_path):
+                    test_env_id =get_test_env_id(cur_path)
                     if env==test_env_id:
                         cnt+=1
                         valid_model_id[env].append(f'{path}/{subdir}/best_model.pkl')

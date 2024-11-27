@@ -492,10 +492,10 @@ class DivDisLossWrapper(torch.nn.Module):
             "total_loss": total_loss.item()
         }
 
-        if modifier is not None:
-            loss_info["modifier_max_loss"] = modifier.max().item()
-            loss_info["modifier_mean_loss"] = modifier.mean().item()
-            loss_info["modifier_min_loss"] = modifier.min().item()
+        # if modifier is not None:
+        #     loss_info["modifier_max_loss"] = modifier.max().item()
+        #     loss_info["modifier_mean_loss"] = modifier.mean().item()
+        #     loss_info["modifier_min_loss"] = modifier.min().item()
 
         # if self.log_this_batch:
         #     record_diversity(

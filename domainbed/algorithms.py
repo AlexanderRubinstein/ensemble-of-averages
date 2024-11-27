@@ -176,7 +176,7 @@ class HDR(Algorithm):
             reduction="mean",
             mapper=None,
             loss_type="a2d",
-            use_always_labeled=False,
+            use_always_labeled=True,
             modifier=None,
             gamma=2.0,
             disagree_after_epoch=0,
